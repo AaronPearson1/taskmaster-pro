@@ -13,6 +13,8 @@ var createTask = function(taskText, taskDate, taskList) {
   // append span and p element to parent li
   taskLi.append(taskSpan, taskP);
 
+  // check due date
+  auditTask(taskLi);
 
   // append to ul list on the page
   $("#list-" + taskList).append(taskLi);
@@ -96,6 +98,27 @@ $(".card .list-group").sortable({
   }
 });
 
+var auditTask = function(taskEl) {
+  // get date from task element
+  var date = $(taskEl).find("span").text().trim();
+  // esnure it worked
+  console.log(date);
+
+  // convert to moment object at 5:00pm
+  var time= moment(date, "L").set("hour", 17);
+  
+  // remove any old classes from element
+  $(taskEl).removeClass("list-group-item-warning list-group-item-danger");
+
+  // apply new class if task is near/over due date
+  if (moment().isAfter(time)) {
+    $(taskEl).addClass("list-group-item-danger");
+  }
+  else if (Math.abs(moment().diff(time, "days")) <=2) {
+    $(taskEl).addClass("list-group-item-warning");
+  }
+};
+
 $("#trash").droppable({
   accept: ".card .list-group-item", 
   tolerance: "touch",
@@ -171,7 +194,7 @@ $(".list-group").on("click", "p", function(){
     var index = $(this)
       .closest(".list-group-item")
       .index();
-    tasks[stauts][index].text = text;
+    tasks[status][index].text = text;
     saveTasks();
 
     // recreate p element
@@ -200,15 +223,23 @@ $(".list-group").on("click", "span", function() {
   // swap out elements
   $(this).replaceWith(dateInput);
 
+  // enable jquery ui datepicker
+  dateInput.datepicker({
+    minDate: 1,
+    onClose: function() {
+      // when calendr is closed, force a "change" event on the 'dateInput'
+      $(this).trigger("change");
+    }
+  });
+
   // automactically focus on new element
   dateInput.trigger("focus");
 
   // value of due date was changed
-  $(".list-group").on("blur", "input[type='text']", function() {
+  $(".list-group").on("change", "input[type='text']", function() {
     // get current text
     var date = $(this)
-      .val()
-      .trim();
+      .val();
 
     // get the parent ul's id attribute
     var status = $(this)
@@ -216,7 +247,7 @@ $(".list-group").on("click", "span", function() {
       .attr("id")
       .replace("list-", "");
 
-    // get th tasks's postion in the list of other li elements
+    // get the tasks's postion in the list of other li elements
     var index = $(this)
       .closest(".list-group-item")
       .index();
@@ -232,7 +263,14 @@ $(".list-group").on("click", "span", function() {
 
     // replace input with span element
     $(this).replaceWith(taskSpan);
+
+    // Pass task's <li> element into audtiTask() to check new due date
+    auditTask($(taskSpan).closest(".list-group-item"));
   });
+});
+
+$("#modalDueDate").datepicker({
+  minDate: 1
 });
 
 // remove all tasks
